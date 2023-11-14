@@ -1,0 +1,111 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+}
+
+android {
+
+    String packageName = "com.umn.no_browser"
+    namespace packageName
+    testNamespace "${packageName}.test"
+
+    compileSdk build_versions.compile_sdk
+    buildToolsVersion build_versions.build_tools
+
+    defaultConfig {
+        minSdk build_versions.min_sdk
+        targetSdk build_versions.target_sdk
+        versionCode build_versions.code
+        versionName build_versions.name
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        resConfigs "en"
+    }
+
+    signingConfigs {
+        def store_file = file("$rootDir/app/key_store/debug.keystore")
+        def store_password = "android"
+        def key_alias = "androiddebugkey"
+        def key_password = "android"
+
+        release {
+            storeFile store_file
+            storePassword store_password
+            keyAlias key_alias
+            keyPassword key_password
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            debuggable false
+            jniDebuggable false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+        viewBinding true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions { jvmTarget = "17" }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+        unitTests.includeAndroidResources = true
+    }
+
+//    sourceSets {
+//        androidTest {}
+//        debug {}
+//        main {
+//            java.srcDirs = ["src/main/java"]
+//            res.srcDirs = ["$rootDir/app/src/main/res"]
+//            java.srcDirs = ["$rootDir/app/src/main"]
+//            manifest.srcFile "AndroidManifest.xml"
+//            proto { srcDir "proto" }
+//        }
+//    }
+
+//    packagingOptions {
+//        exclude "META-INF/**"
+//        exclude "okhttp3/**"
+//        exclude "kotlin/**"
+//        exclude "org/**"
+//        exclude "**.properties"
+//        exclude "**.bin"
+//        exclude "kotlin-tooling-metadata.json"
+//    }
+}
+
+dependencies {
+
+    implementation fileTree(dir: "libs", include: ["*.jar", "*.aar"])
+
+    implementation "androidx.appcompat:appcompat:$vAndroidxAppCompat"
+    implementation "androidx.test.espresso:espresso-idling-resource:$vAndroidxTestEspresso"
+
+    implementation "com.google.android.material:material:$vMaterial"
+
+    testImplementation "junit:junit:$vJunit"
+    testImplementation "org.json:json:$vOrgGson"
+    testImplementation "org.mockito:mockito-core:$vMockito"
+    testImplementation "org.mockito:mockito-inline:$vMockitoInline"
+
+    androidTestImplementation "androidx.test:rules:$vAndroidxTestRules"
+    androidTestImplementation "androidx.test.ext:junit-ktx:$vAndroidxTestExtJunit"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$vAndroidxTestEspresso"
+}

@@ -1,0 +1,71 @@
+name: android
+
+on:
+  push:
+    branches: [ master ]
+#  pull_request:
+#    branches: [ started ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "adopt"
+
+      - name: Generate keystore
+        run: |
+          [ ! -d ~/.android ] && mkdir ~/.android
+          echo y | keytool -genkey -dname "cn=debug, ou=debug, o=debug, c=debug" -alias androiddebugkey -keypass android --storepass android -keyalg RSA -keystore ~/.android/debug.keystore -validity 10000
+
+      - name: Replace org.gradle.jvmargs
+        run: |
+          ORG_GRADLE_JVM=`cat gradle.properties | grep org.gradle.jvmargs`
+          sed -i 's/'"${ORG_GRADLE_JVM}"'/org.gradle.jvmargs=-Xmx8192m -Dfile.encoding=UTF-8/g' gradle.properties
+          cat gradle.properties | grep org.gradle.jvmargs
+
+      - name: Gradle grant permission
+        run: chmod +x gradlew
+
+      - name: Gradle dependencies
+        run: ./gradlew dependencies
+
+      - name: Gradle build
+        run: ./gradlew clean build
+
+      - name: Gradle assembleDebug
+        run: ./gradlew assembleDebug
+
+      - name: Gradle assembleRelease
+        run: ./gradlew assembleRelease
+
+      - name: Gradle bundleRelease
+        run: ./gradlew bundleRelease
+
+      - name: upload outputs
+        uses: actions/upload-artifact@v3
+        with:
+          name: outputs
+          path: app/build/outputs
+
+      - name: upload apk debug
+        uses: actions/upload-artifact@v3
+        with:
+          name: apk-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: upload apk release
+        uses: actions/upload-artifact@v3
+        with:
+          name: apk-release
+          path: app/build/outputs/apk/release/app-release.apk
+
+      - name: upload aab
+        uses: actions/upload-artifact@v3
+        with:
+          name: aab-release
+          path: app/build/outputs/bundle/release/app-release.aab
