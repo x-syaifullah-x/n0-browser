@@ -1,12 +1,16 @@
 package com.umn.no_browser.view.home
 
 import android.annotation.SuppressLint
+import android.app.Notification.Action
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -26,6 +30,7 @@ import com.umn.no_browser.R
 import com.umn.no_browser.databinding.ActivityMainBinding
 import com.umn.no_browser.databinding.DialogDownloadBinding
 import com.umn.no_browser.view.constant.AppBuild
+import com.umn.no_browser.view.services.CursorService
 import com.umn.no_browser.view.services.DownloadSealed
 import com.umn.no_browser.view.services.DownloadService
 import java.io.File
@@ -44,154 +49,66 @@ class MainActivity : AppCompatActivity() {
 
     private var timeOnBackPressed = 0L
 
+    private var _cursorService: CursorService? = null
+
+    private val cursorConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (service is CursorService.CursorBinder) {
+                _cursorService = service.getServices()
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(activityMainBinding.root)
 
+        bindService(
+            Intent(this, CursorService::class.java), cursorConnection, Context.BIND_AUTO_CREATE
+        )
         val webView = activityMainBinding.webView
+        activityMainBinding.root.setOnClickListener { }
+        activityMainBinding.root.setOnKeyListener { _, keyCode, _ ->
+            val cursorService = _cursorService
+            if (cursorService != null) {
+                when (keyCode) {
+                    KeyEvent.KEYCODE_BACK -> {
+                        onBackPressed()
+                    }
 
-        val cursor = activityMainBinding.cursor
-        cursor.bringToFront()
-        cursor.requestFocus()
-        cursor.setOnClickListener { _ -> }
-        cursor.setOnFocusChangeListener { v, hasFocus ->
-            if (v.hasFocus()) {
-                v.setBackgroundResource(R.drawable.cursor)
-            } else {
-                v.background = null
+                    KeyEvent.KEYCODE_DPAD_CENTER -> {
+                    }
+
+                    KeyEvent.KEYCODE_ENTER -> {
+                        val x = cursorService.getX()
+                        val y = cursorService.getY()
+                        enter(x, y)
+                    }
+
+                    KeyEvent.KEYCODE_DPAD_UP -> {
+                        cursorService.move(0F, -18F)
+                    }
+
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                        cursorService.move(18F, 0F)
+                    }
+
+                    KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        cursorService.move(0F, 18F)
+                    }
+
+                    KeyEvent.KEYCODE_DPAD_LEFT -> {
+                        cursorService.move(-18F, 0F)
+                    }
+                }
+                return@setOnKeyListener true
             }
-        }
-
-        fun moveCursor(deltaX: Float, deltaY: Float) {
-            val x = cursor.x + deltaX
-            val y = cursor.y + deltaY
-            println("cursorX: $x || cursorY: $y")
-
-            if (x < 0 - 20) {
-                return
-            }
-
-            if (x > webView.width - 20) {
-                return
-            }
-
-            if (y < 0 - 20) {
-                return
-            }
-            if (y >= webView.height - 20) {
-                return
-            }
-            cursor.x = x
-            cursor.y = y
-        }
-
-
-        cursor.setOnKeyListener { v, keyCode, _ ->
-            println(keyCode)
-
-            fun enter() {
-                val x = v.x
-                val y = v.y
-                val downTime = SystemClock.uptimeMillis()
-                val eventTime = SystemClock.uptimeMillis()
-                val properties = arrayOf(MotionEvent.PointerProperties())
-                val pp1 = MotionEvent.PointerProperties()
-                pp1.id = 0
-                pp1.toolType = MotionEvent.TOOL_TYPE_FINGER
-                properties[0] = pp1
-                val pointerCoords = arrayOf(MotionEvent.PointerCoords())
-                val pc1 = MotionEvent.PointerCoords()
-                pc1.x = x
-                pc1.y = y
-                pc1.pressure = 1F
-                pc1.size = 1F
-                pointerCoords[0] = pc1
-
-                var motionEvent = MotionEvent.obtain(
-                    downTime, eventTime,
-                    MotionEvent.ACTION_DOWN,
-                    1,
-                    properties,
-                    pointerCoords,
-                    0,
-                    0,
-                    1F,
-                    1F,
-                    0,
-                    0,
-                    0,
-                    0,
-                );
-                webView.dispatchTouchEvent(motionEvent)
-                motionEvent.recycle()
-
-                motionEvent = MotionEvent.obtain(
-                    downTime,
-                    eventTime,
-                    MotionEvent.ACTION_UP,
-                    1,
-                    properties,
-                    pointerCoords,
-                    0,
-                    0,
-                    1F,
-                    1F,
-                    0,
-                    0,
-                    0,
-                    0
-                )
-                webView.dispatchTouchEvent(motionEvent)
-                motionEvent.recycle()
-            }
-            when (keyCode) {
-                KeyEvent.KEYCODE_BACK -> {
-                    return@setOnKeyListener false
-                }
-
-
-                KeyEvent.KEYCODE_DPAD_CENTER -> {
-                    enter()
-                    return@setOnKeyListener false
-                }
-
-                KeyEvent.KEYCODE_ENTER -> {
-                    enter()
-                    return@setOnKeyListener false
-                }
-
-                KeyEvent.KEYCODE_PAGE_UP -> {
-                    webView.requestFocus()
-                    return@setOnKeyListener false
-                }
-
-                KeyEvent.KEYCODE_PAGE_DOWN -> {
-                    webView.requestFocus()
-                    return@setOnKeyListener false
-                }
-
-                KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    moveCursor(-18F, 0F)
-                    return@setOnKeyListener true
-                }
-
-                KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    moveCursor(18F, 0F)
-                    return@setOnKeyListener true
-                }
-
-                KeyEvent.KEYCODE_DPAD_UP -> {
-                    moveCursor(0F, -18F)
-                    return@setOnKeyListener true
-                }
-
-                KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    moveCursor(0F, 18F)
-                    return@setOnKeyListener true
-                }
-            }
-            return@setOnKeyListener true
+            return@setOnKeyListener false
         }
 
         @SuppressLint("SetJavaScriptEnabled")
@@ -317,36 +234,64 @@ class MainActivity : AppCompatActivity() {
                 super.onReceivedError(view, request, error)
                 activityMainBinding.progressHorizontal.visibility = View.GONE
             }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-//                cursor.requestFocus()
-            }
         }
-//        activityMainBinding.textInputLayoutUrl.setEndIconOnClickListener { v ->
-//            closeKeyboard(v)
-//            val url = "${activityMainBinding.textInputEditTextUrl.text}"
-//            webView.loadUrl(url)
-//        }
-//        activityMainBinding.textInputEditTextUrl.setOnKeyListener { v, keyCode, event ->
-//            if ((event.action == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-//                val url = "${activityMainBinding.textInputEditTextUrl.text}"
-//                webView.loadUrl(url)
-//                closeKeyboard(v)
-//                return@setOnKeyListener true
-//            }
-//            return@setOnKeyListener false
-//        }
-//        activityMainBinding.iconSetting.setOnClickListener {
-//            Toast.makeText(it.context, "Soon", Toast.LENGTH_LONG).show()
-//        }
         val homePage = "https://n0render.com/dc"
 //        val homePage = "https://apkpure.com"
-//        val homePage = "https://google.com"
         webView.loadUrl(homePage)
-//        activityMainBinding.btnHomePage.setOnClickListener {
-//            webView.loadUrl(homePage)
-//        }
+    }
+
+    private fun enter(x: Float, y: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        val eventTime = SystemClock.uptimeMillis()
+        val properties = arrayOf(MotionEvent.PointerProperties())
+        val pp1 = MotionEvent.PointerProperties()
+        pp1.id = 0
+        pp1.toolType = MotionEvent.TOOL_TYPE_FINGER
+        properties[0] = pp1
+        val pointerCoords = arrayOf(MotionEvent.PointerCoords())
+        val pc1 = MotionEvent.PointerCoords()
+        pc1.x = x
+        pc1.y = y
+        pc1.pressure = 1F
+        pc1.size = 1F
+        pointerCoords[0] = pc1
+
+        var motionEvent = MotionEvent.obtain(
+            downTime, eventTime,
+            MotionEvent.ACTION_DOWN,
+            1,
+            properties,
+            pointerCoords,
+            0,
+            0,
+            1F,
+            1F,
+            0,
+            0,
+            0,
+            0,
+        );
+        activityMainBinding.webView.dispatchTouchEvent(motionEvent)
+        motionEvent.recycle()
+
+        motionEvent = MotionEvent.obtain(
+            downTime,
+            eventTime,
+            MotionEvent.ACTION_UP,
+            1,
+            properties,
+            pointerCoords,
+            0,
+            0,
+            1F,
+            1F,
+            0,
+            0,
+            0,
+            0
+        )
+        activityMainBinding.webView.dispatchTouchEvent(motionEvent)
+        motionEvent.recycle()
     }
 
     /**
@@ -363,11 +308,6 @@ class MainActivity : AppCompatActivity() {
         return String.format(Locale.getDefault(), "%.2f MB", toMegaByte(value))
     }
 
-    private fun closeKeyboard(v: View) {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(v.windowToken, 0)
-    }
-
     override fun onBackPressed() {
         val currentTimeMillis = System.currentTimeMillis()
         val delay = currentTimeMillis - timeOnBackPressed
@@ -380,12 +320,23 @@ class MainActivity : AppCompatActivity() {
             }
         } else {
             timeOnBackPressed = currentTimeMillis
-            val cursor = activityMainBinding.cursor
-            if (!cursor.isFocused) {
-                cursor.requestFocus()
-            } else {
-                cursor.clearFocus()
-            }
+//            if (activityMainBinding.webView.isFocused) {
+//                activityMainBinding.webView.clearFocus()
+//            } else {
+//                activityMainBinding.webView.requestFocus()
+//            }
         }
+    }
+
+    override fun onResume() {
+        bindService(
+            Intent(this, CursorService::class.java), cursorConnection, Context.BIND_AUTO_CREATE
+        )
+        super.onResume()
+    }
+
+    override fun onPause() {
+        unbindService(cursorConnection)
+        super.onPause()
     }
 }
