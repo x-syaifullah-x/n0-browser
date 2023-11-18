@@ -1,6 +1,7 @@
 package com.umn.no_browser.view.home
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,17 +9,18 @@ import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.provider.DocumentsContract
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.view.inputmethod.InputMethodManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
@@ -33,37 +35,39 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
+    private val startActivityResult =
+        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            println(uri)
+        }
+
     private val activityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
     private var timeOnBackPressed = 0L
 
-    private val moveSpeed = 18F
+    private val cursorSpeed = 18F
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(activityMainBinding.root)
 
-        val webView = activityMainBinding.webView
-
+        startActivityResult.launch(null)
         val cursor = activityMainBinding.cursor
         cursor.bringToFront()
-        cursor.requestFocus()
         cursor.setOnClickListener { _ -> }
-        cursor.setOnFocusChangeListener { v, hasFocus ->
+        cursor.setOnFocusChangeListener { v, _ ->
             if (v.hasFocus()) {
                 v.setBackgroundResource(R.drawable.cursor)
             } else {
                 v.background = null
             }
         }
-
+        val webView = activityMainBinding.webView
         cursor.setOnKeyListener { v, keyCode, _ ->
             when (keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     return@setOnKeyListener false
                 }
-
 
                 KeyEvent.KEYCODE_DPAD_CENTER -> {
                     webViewClicked(webView, v.x, v.y)
@@ -85,23 +89,23 @@ class MainActivity : AppCompatActivity() {
                     return@setOnKeyListener false
                 }
 
-                KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    moveCursor(-moveSpeed, 0F)
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    moveCursor(keyCode)
                     return@setOnKeyListener true
                 }
 
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    moveCursor(moveSpeed, 0F)
+                    moveCursor(keyCode)
                     return@setOnKeyListener true
                 }
 
-                KeyEvent.KEYCODE_DPAD_UP -> {
-                    moveCursor(0F, -moveSpeed)
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    moveCursor(keyCode)
                     return@setOnKeyListener true
                 }
 
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    moveCursor(0F, moveSpeed)
+                    moveCursor(keyCode)
                     return@setOnKeyListener true
                 }
             }
@@ -113,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
             val i = Intent(this, DownloadService::class.java)
             i.putExtra(DownloadService.DATA_EXTRA_URL_STRING, url)
-            val downloadDirectory = File(cacheDir, "NOBrowser")
+            val downloadDirectory = File(cacheDir, "N0Browser")
             if (!downloadDirectory.exists()) {
                 downloadDirectory.mkdirs()
             }
@@ -121,11 +125,14 @@ class MainActivity : AppCompatActivity() {
             i.data = AppBuild.Provider.getUriForFile(this@MainActivity, file)
             registerReceiver(
                 object : BroadcastReceiver() {
+                    @SuppressLint("InflateParams")
                     val view = LayoutInflater.from(this@MainActivity)
                         .inflate(R.layout.dialog_download, null)
                     val dialogDownloadBinding = DialogDownloadBinding.bind(view)
                     val dialog =
-                        AlertDialog.Builder(this@MainActivity).setCancelable(false).setView(view)
+                        AlertDialog.Builder(this@MainActivity)
+                            .setCancelable(false)
+                            .setView(view)
                             .create()
 
                     init {
@@ -163,7 +170,7 @@ class MainActivity : AppCompatActivity() {
                                 if (progressOfPercent == 100) {
                                     dialog.cancel()
                                     unregisterReceiver(this)
-                                    val uri = i.data;
+                                    val uri = i.data
                                     val isApk = uri?.lastPathSegment?.contains(".apk") ?: false
                                     if (isApk) {
                                         val install = Intent(Intent.ACTION_VIEW)
@@ -237,30 +244,38 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val homePage = "https://n0render.com/dc"
-//        val homePage = "https://apkpure.com"
         webView.loadUrl(homePage)
     }
 
-    private fun moveCursor(deltaX: Float, deltaY: Float) {
+    private fun moveCursor(keyCode: Int) {
+        val deltas =
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> floatArrayOf(0F, -cursorSpeed)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> floatArrayOf(cursorSpeed, 0F)
+                KeyEvent.KEYCODE_DPAD_DOWN -> floatArrayOf(0F, cursorSpeed)
+                KeyEvent.KEYCODE_DPAD_LEFT -> floatArrayOf(-cursorSpeed, 0F)
+                else -> throw IllegalAccessException("keyCode supported: [${KeyEvent.KEYCODE_DPAD_UP}, ${KeyEvent.KEYCODE_DPAD_RIGHT}, ${KeyEvent.KEYCODE_DPAD_DOWN}, ${KeyEvent.KEYCODE_DPAD_LEFT}]")
+            }
+
         val cursor = activityMainBinding.cursor
-        val x = cursor.x + deltaX
-        val y = cursor.y + deltaY
-        val isLeft = x < 0 - moveSpeed
+        val x = cursor.x + deltas[0]
+        val y = cursor.y + deltas[1]
+        val isLeft = x < 0 - cursorSpeed
         if (isLeft) {
             return
         }
-        val isRight = x > activityMainBinding.root.width - moveSpeed
+        val isRight = x > (activityMainBinding.root.width - cursorSpeed)
         if (isRight) {
             return
         }
 
-        val isTop = y < 0 - moveSpeed
+        val isTop = y < 0 - cursorSpeed
         if (isTop) {
             val webView = activityMainBinding.webView
             webView.scrollTo(0, webView.scrollY - webView.height / 4)
             return
         }
-        val isBottom = y >= activityMainBinding.root.height - moveSpeed
+        val isBottom = y >= (activityMainBinding.root.height - cursorSpeed)
         if (isBottom) {
             val webView = activityMainBinding.webView
             webView.scrollTo(0, webView.scrollY + webView.height / 4)
@@ -300,7 +315,7 @@ class MainActivity : AppCompatActivity() {
             0,
             0,
             0,
-        );
+        )
         webView.dispatchTouchEvent(motionEvent)
         motionEvent.recycle()
 
@@ -334,7 +349,7 @@ class MainActivity : AppCompatActivity() {
     /**
      * example return *.00 MB
      */
-    private fun toMegaByteString(value: Long): String? {
+    private fun toMegaByteString(value: Long): String {
         return String.format(Locale.getDefault(), "%.2f MB", toMegaByte(value))
     }
 
@@ -352,7 +367,7 @@ class MainActivity : AppCompatActivity() {
             timeOnBackPressed = currentTimeMillis
             val cursor = activityMainBinding.cursor
             if (!cursor.isFocused) {
-                cursor.requestFocus()
+                cursor.requestFocusFromTouch()
             } else {
                 cursor.clearFocus()
             }

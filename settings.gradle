@@ -1,4 +1,4 @@
-rootProject.name = "Android Started Project"
+rootProject.name = "UMN N0Browser"
 
 include(
         ":app"
