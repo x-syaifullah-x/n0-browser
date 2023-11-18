@@ -57,15 +57,16 @@
     <!--        app:layout_constraintEnd_toEndOf="parent"-->
     <!--        app:layout_constraintTop_toTopOf="@id/text_input_layout_url" />-->
 
-    <FrameLayout
+    <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/cursor"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:background="@drawable/cursor"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        tools:elevation="100dp"
+        tools:src="@drawable/cursor" />
 
     <ProgressBar
         android:id="@+id/progress_horizontal"

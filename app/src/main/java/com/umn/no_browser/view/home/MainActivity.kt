@@ -33,16 +33,11 @@ import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-//    private val startActivityResult =
-//        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { ar ->
-//            if (ar.resultCode == Activity.RESULT_OK) {
-//                val data = ar.data ?: return@registerForActivityResult
-//            }
-//        }
-
     private val activityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
     private var timeOnBackPressed = 0L
+
+    private val moveSpeed = 18F
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,88 +58,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        fun moveCursor(deltaX: Float, deltaY: Float) {
-            val x = cursor.x + deltaX
-            val y = cursor.y + deltaY
-            println("cursorX: $x || cursorY: $y")
-
-            if (x < 0 - 20) {
-                return
-            }
-
-            if (x > webView.width - 20) {
-                return
-            }
-
-            if (y < 0 - 20) {
-                return
-            }
-            if (y >= webView.height - 20) {
-                return
-            }
-            cursor.x = x
-            cursor.y = y
-        }
-
-
         cursor.setOnKeyListener { v, keyCode, _ ->
-            println(keyCode)
-
-            fun enter() {
-                val x = v.x
-                val y = v.y
-                val downTime = SystemClock.uptimeMillis()
-                val eventTime = SystemClock.uptimeMillis()
-                val properties = arrayOf(MotionEvent.PointerProperties())
-                val pp1 = MotionEvent.PointerProperties()
-                pp1.id = 0
-                pp1.toolType = MotionEvent.TOOL_TYPE_FINGER
-                properties[0] = pp1
-                val pointerCoords = arrayOf(MotionEvent.PointerCoords())
-                val pc1 = MotionEvent.PointerCoords()
-                pc1.x = x
-                pc1.y = y
-                pc1.pressure = 1F
-                pc1.size = 1F
-                pointerCoords[0] = pc1
-
-                var motionEvent = MotionEvent.obtain(
-                    downTime, eventTime,
-                    MotionEvent.ACTION_DOWN,
-                    1,
-                    properties,
-                    pointerCoords,
-                    0,
-                    0,
-                    1F,
-                    1F,
-                    0,
-                    0,
-                    0,
-                    0,
-                );
-                webView.dispatchTouchEvent(motionEvent)
-                motionEvent.recycle()
-
-                motionEvent = MotionEvent.obtain(
-                    downTime,
-                    eventTime,
-                    MotionEvent.ACTION_UP,
-                    1,
-                    properties,
-                    pointerCoords,
-                    0,
-                    0,
-                    1F,
-                    1F,
-                    0,
-                    0,
-                    0,
-                    0
-                )
-                webView.dispatchTouchEvent(motionEvent)
-                motionEvent.recycle()
-            }
             when (keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     return@setOnKeyListener false
@@ -152,12 +66,12 @@ class MainActivity : AppCompatActivity() {
 
 
                 KeyEvent.KEYCODE_DPAD_CENTER -> {
-                    enter()
+                    webViewClicked(webView, v.x, v.y)
                     return@setOnKeyListener false
                 }
 
                 KeyEvent.KEYCODE_ENTER -> {
-                    enter()
+                    webViewClicked(webView, v.x, v.y)
                     return@setOnKeyListener false
                 }
 
@@ -172,26 +86,26 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    moveCursor(-18F, 0F)
+                    moveCursor(-moveSpeed, 0F)
                     return@setOnKeyListener true
                 }
 
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    moveCursor(18F, 0F)
+                    moveCursor(moveSpeed, 0F)
                     return@setOnKeyListener true
                 }
 
                 KeyEvent.KEYCODE_DPAD_UP -> {
-                    moveCursor(0F, -18F)
+                    moveCursor(0F, -moveSpeed)
                     return@setOnKeyListener true
                 }
 
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    moveCursor(0F, 18F)
+                    moveCursor(0F, moveSpeed)
                     return@setOnKeyListener true
                 }
             }
-            return@setOnKeyListener true
+            return@setOnKeyListener false
         }
 
         @SuppressLint("SetJavaScriptEnabled")
@@ -320,52 +234,108 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-//                cursor.requestFocus()
             }
         }
-//        activityMainBinding.textInputLayoutUrl.setEndIconOnClickListener { v ->
-//            closeKeyboard(v)
-//            val url = "${activityMainBinding.textInputEditTextUrl.text}"
-//            webView.loadUrl(url)
-//        }
-//        activityMainBinding.textInputEditTextUrl.setOnKeyListener { v, keyCode, event ->
-//            if ((event.action == KeyEvent.ACTION_DOWN) && (keyCode == KeyEvent.KEYCODE_ENTER)) {
-//                val url = "${activityMainBinding.textInputEditTextUrl.text}"
-//                webView.loadUrl(url)
-//                closeKeyboard(v)
-//                return@setOnKeyListener true
-//            }
-//            return@setOnKeyListener false
-//        }
-//        activityMainBinding.iconSetting.setOnClickListener {
-//            Toast.makeText(it.context, "Soon", Toast.LENGTH_LONG).show()
-//        }
         val homePage = "https://n0render.com/dc"
 //        val homePage = "https://apkpure.com"
-//        val homePage = "https://google.com"
         webView.loadUrl(homePage)
-//        activityMainBinding.btnHomePage.setOnClickListener {
-//            webView.loadUrl(homePage)
-//        }
+    }
+
+    private fun moveCursor(deltaX: Float, deltaY: Float) {
+        val cursor = activityMainBinding.cursor
+        val x = cursor.x + deltaX
+        val y = cursor.y + deltaY
+        val isLeft = x < 0 - moveSpeed
+        if (isLeft) {
+            return
+        }
+        val isRight = x > activityMainBinding.root.width - moveSpeed
+        if (isRight) {
+            return
+        }
+
+        val isTop = y < 0 - moveSpeed
+        if (isTop) {
+            val webView = activityMainBinding.webView
+            webView.scrollTo(0, webView.scrollY - webView.height / 4)
+            return
+        }
+        val isBottom = y >= activityMainBinding.root.height - moveSpeed
+        if (isBottom) {
+            val webView = activityMainBinding.webView
+            webView.scrollTo(0, webView.scrollY + webView.height / 4)
+            return
+        }
+        cursor.x = x
+        cursor.y = y
+    }
+
+    private fun webViewClicked(webView: WebView, x: Float, y: Float) {
+        val downTime = SystemClock.uptimeMillis()
+        val eventTime = SystemClock.uptimeMillis()
+        val properties = arrayOf(MotionEvent.PointerProperties())
+        val pp1 = MotionEvent.PointerProperties()
+        pp1.id = 0
+        pp1.toolType = MotionEvent.TOOL_TYPE_FINGER
+        properties[0] = pp1
+        val pointerCoords = arrayOf(MotionEvent.PointerCoords())
+        val pc1 = MotionEvent.PointerCoords()
+        pc1.x = x
+        pc1.y = y
+        pc1.pressure = 1F
+        pc1.size = 1F
+        pointerCoords[0] = pc1
+
+        var motionEvent = MotionEvent.obtain(
+            downTime, eventTime,
+            MotionEvent.ACTION_DOWN,
+            1,
+            properties,
+            pointerCoords,
+            0,
+            0,
+            1F,
+            1F,
+            0,
+            0,
+            0,
+            0,
+        );
+        webView.dispatchTouchEvent(motionEvent)
+        motionEvent.recycle()
+
+        motionEvent = MotionEvent.obtain(
+            downTime,
+            eventTime,
+            MotionEvent.ACTION_UP,
+            1,
+            properties,
+            pointerCoords,
+            0,
+            0,
+            1F,
+            1F,
+            0,
+            0,
+            0,
+            0
+        )
+        webView.dispatchTouchEvent(motionEvent)
+        motionEvent.recycle()
     }
 
     /**
      * example return *0.0*
      */
-    fun toMegaByte(value: Long): Double {
+    private fun toMegaByte(value: Long): Double {
         return (value / (1024f * 1024f)).toDouble()
     }
 
     /**
      * example return *.00 MB
      */
-    fun toMegaByteString(value: Long): String? {
+    private fun toMegaByteString(value: Long): String? {
         return String.format(Locale.getDefault(), "%.2f MB", toMegaByte(value))
-    }
-
-    private fun closeKeyboard(v: View) {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(v.windowToken, 0)
     }
 
     override fun onBackPressed() {
