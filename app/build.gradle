@@ -5,7 +5,7 @@ plugins {
 
 android {
 
-    String packageName = "com.umn.no_browser"
+    String packageName = "com.umn.n0"
     namespace packageName
     testNamespace "${packageName}.test"
 
@@ -21,6 +21,20 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
         resConfigs "en"
+    }
+
+    flavorDimensions = ["app"]
+    productFlavors {
+        "browser" {
+            applicationIdSuffix ".browser"
+             resValue "string", "app_name", "N0Browser"
+            versionNameSuffix ".browser"
+        }
+        "render" {
+            applicationIdSuffix ".render"
+             resValue "string", "app_name", "N0Render"
+            versionNameSuffix ".render"
+        }
     }
 
     signingConfigs {

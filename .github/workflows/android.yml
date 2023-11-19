@@ -52,20 +52,32 @@ jobs:
           name: outputs
           path: app/build/outputs
 
-      - name: upload apk debug
+      - name: upload apk debug N0Browser
         uses: actions/upload-artifact@v3
         with:
-          name: apk-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: apk-debug-N0Browser
+          path: app/build/outputs/apk/browser/debug/app-browser-debug.apk
 
-      - name: upload apk release
+      - name: upload apk debug N0Render
         uses: actions/upload-artifact@v3
         with:
-          name: apk-release
-          path: app/build/outputs/apk/release/app-release.apk
+          name: apk-debug-N0Render
+          path: app/build/outputs/apk/render/debug/app-render-debug.apk
 
-      - name: upload aab
+      - name: upload apk release N0Browser
         uses: actions/upload-artifact@v3
         with:
-          name: aab-release
-          path: app/build/outputs/bundle/release/app-release.aab
+          name: apk-release-N0Browser
+          path: app/build/outputs/apk/browser/release/app-browser-release.apk
+
+      - name: upload apk release N0Render
+        uses: actions/upload-artifact@v3
+        with:
+          name: apk-release-N0Render
+          path: app/build/outputs/apk/render/release/app-render-release.apk
+
+#      - name: upload aab
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: aab-release
+#          path: app/build/outputs/bundle/release/app-release.aab

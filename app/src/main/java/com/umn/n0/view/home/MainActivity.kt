@@ -1,15 +1,16 @@
-package com.umn.no_browser.view.home
+package com.umn.n0.view.home
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.SystemClock
-import android.provider.DocumentsContract
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -24,40 +25,82 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
-import com.umn.no_browser.R
-import com.umn.no_browser.databinding.ActivityMainBinding
-import com.umn.no_browser.databinding.DialogDownloadBinding
-import com.umn.no_browser.view.constant.AppBuild
-import com.umn.no_browser.view.services.DownloadSealed
-import com.umn.no_browser.view.services.DownloadService
+import androidx.documentfile.provider.DocumentFile
+import com.umn.n0.R
+import com.umn.n0.databinding.ActivityMainBinding
+import com.umn.n0.databinding.DialogDownloadBinding
+import com.umn.n0.view.constant.AppBuild
+import com.umn.n0.view.services.DownloadSealed
+import com.umn.n0.view.services.DownloadService
 import java.io.File
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
-    private val startActivityResult =
+    companion object {
+
+        private val PERMISSIONS = arrayOf(
+            android.Manifest.permission.READ_EXTERNAL_STORAGE,
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
+
+        private const val DOWNLOAD_DIR = "N0Browser"
+    }
+
+    private var downloadUrl: String? = null
+
+    private val activityResultOpenDocumentTree =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            println(uri)
+            if (uri != null) {
+                val url = downloadUrl ?: return@registerForActivityResult
+                val pickedDir = DocumentFile.fromTreeUri(this, uri)
+                val fileName =
+                    downloadUrl?.toUri()?.lastPathSegment ?: return@registerForActivityResult
+                val findFile = pickedDir?.findFile(fileName)
+                val isExist = findFile?.exists() ?: false
+                if (isExist) findFile?.delete()
+                val createFile = pickedDir?.createFile("", fileName)
+                val result = createFile?.uri
+                if (result != null) {
+                    startDownload(url, result)
+                }
+            }
+        }
+
+    private val activityResultLauncherMultiplePermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            var isGranted = false
+            for (permission in PERMISSIONS) {
+                isGranted = permissions[permission] ?: false
+            }
+            if (isGranted) {
+                val a = File(Environment.getExternalStorageDirectory(), DOWNLOAD_DIR)
+                if (!a.exists()) {
+                    a.mkdir()
+                }
+                if (downloadUrl == null) return@registerForActivityResult
+                val uri = AppBuild.Provider.getUriForFile(
+                    this, File(a, downloadUrl!!.toUri()?.lastPathSegment)
+                )
+                startDownload(downloadUrl!!, uri)
+            }
         }
 
     private val activityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
     private var timeOnBackPressed = 0L
 
-    private val cursorSpeed = 18F
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContentView(activityMainBinding.root)
 
-        startActivityResult.launch(null)
         val cursor = activityMainBinding.cursor
         cursor.bringToFront()
         cursor.setOnClickListener { _ -> }
         cursor.setOnFocusChangeListener { v, _ ->
             if (v.hasFocus()) {
-                v.setBackgroundResource(R.drawable.cursor)
+                v.setBackgroundResource(R.drawable.ic_cursor)
             } else {
                 v.background = null
             }
@@ -115,86 +158,26 @@ class MainActivity : AppCompatActivity() {
         @SuppressLint("SetJavaScriptEnabled")
         webView.settings.javaScriptEnabled = true
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
-            val i = Intent(this, DownloadService::class.java)
-            i.putExtra(DownloadService.DATA_EXTRA_URL_STRING, url)
-            val downloadDirectory = File(cacheDir, "N0Browser")
-            if (!downloadDirectory.exists()) {
-                downloadDirectory.mkdirs()
+            if (url.contains(".bin")) {
+                downloadUrl = url
+                AlertDialog.Builder(this).setTitle("Download")
+                    .setMessage("\nThe download results will be in the $DOWNLOAD_DIR folder")
+                    .setPositiveButton("Ok") { dialog, _ ->
+                        activityResultLauncherMultiplePermissions.launch(PERMISSIONS)
+                        dialog.dismiss()
+                    }.setNegativeButton("Change") { dialog, _ ->
+                        activityResultOpenDocumentTree.launch(null)
+                        dialog.cancel()
+                    }.show()
+            } else {
+                val downloadDirectory = File(cacheDir, DOWNLOAD_DIR)
+                if (!downloadDirectory.exists()) {
+                    downloadDirectory.mkdirs()
+                }
+                val file = File(downloadDirectory, url.toUri().lastPathSegment.toString())
+                val des = AppBuild.Provider.getUriForFile(this@MainActivity, file)
+                startDownload(url, des)
             }
-            val file = File(downloadDirectory, url.toUri().lastPathSegment.toString())
-            i.data = AppBuild.Provider.getUriForFile(this@MainActivity, file)
-            registerReceiver(
-                object : BroadcastReceiver() {
-                    @SuppressLint("InflateParams")
-                    val view = LayoutInflater.from(this@MainActivity)
-                        .inflate(R.layout.dialog_download, null)
-                    val dialogDownloadBinding = DialogDownloadBinding.bind(view)
-                    val dialog =
-                        AlertDialog.Builder(this@MainActivity)
-                            .setCancelable(false)
-                            .setView(view)
-                            .create()
-
-                    init {
-                        dialogDownloadBinding.textViewName.text = i.data?.lastPathSegment
-                        dialog.show()
-                        dialogDownloadBinding.buttonCancel.setOnClickListener {
-                            stopService(Intent(it.context, DownloadService::class.java))
-                            dialog.cancel()
-                        }
-                    }
-
-                    override fun onReceive(context: Context?, intent: Intent?) {
-                        val downloadSealed =
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                intent?.getSerializableExtra(url, DownloadSealed::class.java)
-                            } else {
-                                @Suppress("DEPRECATION") intent?.getSerializableExtra(url) as? DownloadSealed
-                            } ?: return
-                        when (downloadSealed) {
-                            is DownloadSealed.OnDownload -> {
-                                val progressOfPercent =
-                                    downloadSealed.progress * 100 / downloadSealed.contentLength
-                                if (dialogDownloadBinding.progressHorizontal.isIndeterminate) {
-                                    dialogDownloadBinding.progressHorizontal.isIndeterminate = false
-                                }
-                                dialogDownloadBinding.progressHorizontal.progress =
-                                    progressOfPercent
-
-                                val progressOfMB =
-                                    toMegaByteString(downloadSealed.progress.toLong())
-                                val contentLengthOfMB =
-                                    toMegaByteString(downloadSealed.contentLength.toLong())
-                                val a = "$progressOfMB / $contentLengthOfMB"
-                                dialogDownloadBinding.textProgress.text = a
-                                if (progressOfPercent == 100) {
-                                    dialog.cancel()
-                                    unregisterReceiver(this)
-                                    val uri = i.data
-                                    val isApk = uri?.lastPathSegment?.contains(".apk") ?: false
-                                    if (isApk) {
-                                        val install = Intent(Intent.ACTION_VIEW)
-                                        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        install.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                        install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-                                        install.data = uri
-                                        context?.startActivity(install)
-                                    }
-                                }
-                            }
-
-                            is DownloadSealed.OnError -> {
-                                Toast.makeText(
-                                    context, downloadSealed.err.message, Toast.LENGTH_LONG
-                                ).show()
-                                dialog.cancel()
-                                unregisterReceiver(this)
-                            }
-                        }
-                    }
-                }, IntentFilter(url)
-            )
-            startService(i)
         }
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
@@ -243,19 +226,99 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
             }
         }
-        val homePage = "https://n0render.com/dc"
+        val homePage = if (packageName == "com.umn.n0.browser") {
+            "https://n0render.com/dc"
+        } else {
+            "https://n0render.com/retro"
+        }
         webView.loadUrl(homePage)
     }
 
+    private fun startDownload(url: String, des: Uri) {
+        val i = Intent(this, DownloadService::class.java)
+        i.putExtra(DownloadService.DATA_EXTRA_URL_STRING, url)
+        i.data = des
+        registerReceiver(
+            object : BroadcastReceiver() {
+                @SuppressLint("InflateParams")
+                val view =
+                    LayoutInflater.from(this@MainActivity).inflate(R.layout.dialog_download, null)
+                val dialogDownloadBinding = DialogDownloadBinding.bind(view)
+                val dialog =
+                    AlertDialog.Builder(this@MainActivity).setCancelable(false).setView(view)
+                        .create()
+
+                init {
+                    dialogDownloadBinding.textViewName.text = url.toUri().lastPathSegment
+                    dialog.show()
+                    dialogDownloadBinding.buttonCancel.setOnClickListener {
+                        stopService(Intent(it.context, DownloadService::class.java))
+                        dialog.cancel()
+                    }
+                }
+
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    val downloadSealed =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            intent?.getSerializableExtra(url, DownloadSealed::class.java)
+                        } else {
+                            @Suppress("DEPRECATION") intent?.getSerializableExtra(url) as? DownloadSealed
+                        } ?: return
+                    when (downloadSealed) {
+                        is DownloadSealed.OnDownload -> {
+                            val progressOfPercent =
+                                downloadSealed.progress * 100 / downloadSealed.contentLength
+                            if (dialogDownloadBinding.progressHorizontal.isIndeterminate) {
+                                dialogDownloadBinding.progressHorizontal.isIndeterminate = false
+                            }
+                            dialogDownloadBinding.progressHorizontal.progress = progressOfPercent
+
+                            val progressOfMB = toMegaByteString(downloadSealed.progress.toLong())
+                            val contentLengthOfMB =
+                                toMegaByteString(downloadSealed.contentLength.toLong())
+                            val a = "$progressOfMB / $contentLengthOfMB"
+                            dialogDownloadBinding.textProgress.text = a
+                            if (progressOfPercent == 100) {
+                                dialog.cancel()
+                                unregisterReceiver(this)
+                                val uri = i.data
+                                val isApk = uri?.lastPathSegment?.contains(".apk") ?: false
+                                if (isApk) {
+                                    val install = Intent(Intent.ACTION_VIEW)
+                                    install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                    install.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                                    install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+                                    install.setDataAndType(
+                                        uri, "application/vnd.android.package-archive"
+                                    );
+                                    context?.startActivity(install)
+                                }
+                            }
+                        }
+
+                        is DownloadSealed.OnError -> {
+                            Toast.makeText(
+                                context, downloadSealed.err.message, Toast.LENGTH_LONG
+                            ).show()
+                            dialog.cancel()
+                            unregisterReceiver(this)
+                        }
+                    }
+                }
+            }, IntentFilter(url)
+        )
+        startService(i)
+    }
+
     private fun moveCursor(keyCode: Int) {
-        val deltas =
-            when (keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP -> floatArrayOf(0F, -cursorSpeed)
-                KeyEvent.KEYCODE_DPAD_RIGHT -> floatArrayOf(cursorSpeed, 0F)
-                KeyEvent.KEYCODE_DPAD_DOWN -> floatArrayOf(0F, cursorSpeed)
-                KeyEvent.KEYCODE_DPAD_LEFT -> floatArrayOf(-cursorSpeed, 0F)
-                else -> throw IllegalAccessException("keyCode supported: [${KeyEvent.KEYCODE_DPAD_UP}, ${KeyEvent.KEYCODE_DPAD_RIGHT}, ${KeyEvent.KEYCODE_DPAD_DOWN}, ${KeyEvent.KEYCODE_DPAD_LEFT}]")
-            }
+        val cursorSpeed = 30F
+        val deltas = when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_UP -> floatArrayOf(0F, -cursorSpeed)
+            KeyEvent.KEYCODE_DPAD_RIGHT -> floatArrayOf(cursorSpeed, 0F)
+            KeyEvent.KEYCODE_DPAD_DOWN -> floatArrayOf(0F, cursorSpeed)
+            KeyEvent.KEYCODE_DPAD_LEFT -> floatArrayOf(-cursorSpeed, 0F)
+            else -> throw IllegalAccessException("keyCode supported: [${KeyEvent.KEYCODE_DPAD_UP}, ${KeyEvent.KEYCODE_DPAD_RIGHT}, ${KeyEvent.KEYCODE_DPAD_DOWN}, ${KeyEvent.KEYCODE_DPAD_LEFT}]")
+        }
 
         val cursor = activityMainBinding.cursor
         val x = cursor.x + deltas[0]

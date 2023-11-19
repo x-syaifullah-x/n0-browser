@@ -1,4 +1,4 @@
-package com.umn.no_browser
+package com.umn.n0
 
 import android.app.Application
 

@@ -1,9 +1,9 @@
 @file:JvmName("EspressoIdlingResource")
 
-package com.umn.no_browser.view.home.espresso
+package com.umn.n0.view.home.espresso
 
 import androidx.test.espresso.idling.CountingIdlingResource
-import com.umn.no_browser.view.constant.AppBuild
+import com.umn.n0.view.constant.AppBuild
 
 object EspressoIdlingResource {
 

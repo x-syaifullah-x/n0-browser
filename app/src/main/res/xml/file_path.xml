@@ -15,9 +15,9 @@
 
     <!-- EXTERNAL START -->
     <!-- /storage/emulated/0 == Environment.getExternalStorageDirectory() -->
-    <!--    <external-path-->
-    <!--        name="external"-->
-    <!--        path="." />-->
+    <external-path
+        name="external"
+        path="." />
 
     <!--  /storage/emulated/0/Android/data/package_name/files == Context.getExternalFilesDir(null) -->
     <!--    <external-files-path-->

@@ -6,66 +6,15 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-    <!--    <ImageView-->
-    <!--        android:id="@+id/btn_home_page"-->
-    <!--        android:layout_width="wrap_content"-->
-    <!--        android:layout_height="50dp"-->
-    <!--        android:layout_marginStart="8dp"-->
-    <!--        android:src="@drawable/ic_home_page_28"-->
-    <!--        app:layout_constraintBottom_toBottomOf="@id/text_input_layout_url"-->
-    <!--        app:layout_constraintStart_toStartOf="parent"-->
-    <!--        app:layout_constraintTop_toTopOf="@id/text_input_layout_url" />-->
-
-    <!--    <com.google.android.material.textfield.TextInputLayout-->
-    <!--        android:id="@+id/text_input_layout_url"-->
-    <!--        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"-->
-    <!--        android:layout_width="0dp"-->
-    <!--        android:layout_height="wrap_content"-->
-    <!--        android:layout_marginStart="8dp"-->
-    <!--        android:layout_marginTop="8dp"-->
-    <!--        android:layout_marginEnd="8dp"-->
-    <!--        app:boxCornerRadiusBottomEnd="12dp"-->
-    <!--        app:boxCornerRadiusBottomStart="12dp"-->
-    <!--        app:boxCornerRadiusTopEnd="12dp"-->
-    <!--        app:boxCornerRadiusTopStart="12dp"-->
-    <!--        app:boxStrokeColor="@color/a"-->
-    <!--        app:endIconDrawable="@drawable/ic_search_28"-->
-    <!--        app:endIconMode="custom"-->
-    <!--        app:endIconTint="@color/white"-->
-    <!--        app:layout_constraintEnd_toStartOf="@id/icon_setting"-->
-    <!--        app:layout_constraintStart_toEndOf="@id/btn_home_page"-->
-    <!--        app:layout_constraintTop_toTopOf="parent">-->
-
-    <!--        <com.google.android.material.textfield.TextInputEditText-->
-    <!--            android:id="@+id/text_input_edit_text_url"-->
-    <!--            android:layout_width="match_parent"-->
-    <!--            android:layout_height="match_parent"-->
-    <!--            android:imeOptions="flagNoFullscreen|actionGo"-->
-    <!--            android:importantForAutofill="no"-->
-    <!--            android:inputType="textNoSuggestions"-->
-    <!--            android:maxLines="1"-->
-    <!--            android:textColor="@color/white" />-->
-    <!--    </com.google.android.material.textfield.TextInputLayout>-->
-
-    <!--    <ImageView-->
-    <!--        android:id="@+id/icon_setting"-->
-    <!--        android:layout_width="wrap_content"-->
-    <!--        android:layout_height="50dp"-->
-    <!--        android:layout_marginEnd="8dp"-->
-    <!--        android:src="@drawable/ic_menu_28"-->
-    <!--        app:layout_constraintBottom_toBottomOf="@id/text_input_layout_url"-->
-    <!--        app:layout_constraintEnd_toEndOf="parent"-->
-    <!--        app:layout_constraintTop_toTopOf="@id/text_input_layout_url" />-->
-
     <androidx.appcompat.widget.AppCompatImageView
         android:id="@+id/cursor"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        tools:src="@drawable/cursor" />
+        tools:src="@drawable/ic_cursor" />
 
     <ProgressBar
         android:id="@+id/progress_horizontal"

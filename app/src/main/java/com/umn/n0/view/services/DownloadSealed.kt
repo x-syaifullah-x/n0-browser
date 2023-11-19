@@ -1,4 +1,4 @@
-package com.umn.no_browser.view.services
+package com.umn.n0.view.services
 
 import java.io.Serializable
 

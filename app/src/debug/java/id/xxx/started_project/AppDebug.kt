@@ -1,5 +1,5 @@
 package id.xxx.started_project
 
-import com.umn.no_browser.App
+import com.umn.n0.App
 
 class AppDebug : App()

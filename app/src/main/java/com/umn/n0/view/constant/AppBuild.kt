@@ -1,9 +1,9 @@
-package com.umn.no_browser.view.constant
+package com.umn.n0.view.constant
 
 import android.content.Context
 import android.net.Uri
 import androidx.core.content.FileProvider
-import com.umn.no_browser.BuildConfig
+import com.umn.n0.BuildConfig
 import java.io.File
 
 object AppBuild {

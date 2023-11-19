@@ -1,4 +1,4 @@
-package com.umn.no_browser.view.services
+package com.umn.n0.view.services
 
 import android.app.Service
 import android.content.Intent
@@ -54,8 +54,8 @@ class DownloadService : Service() {
                 }
                 if (connection.responseCode in 200..300) {
                     connections[urlString] = connection
-                    val name: String = urlString.toUri().lastPathSegment
-                        ?: throw IllegalArgumentException()
+//                    val name: String = urlString.toUri().lastPathSegment
+//                        ?: throw IllegalArgumentException()
 //                    val contentDisposition = connection.getHeaderField("Content-Disposition")
 //                        if (contentDisposition != null && contentDisposition.indexOf("=") !== -1) {
 //                            contentDisposition.split("=")[1] //getting value after '='
@@ -103,6 +103,7 @@ class DownloadService : Service() {
                 }
                 connection.disconnect()
             } catch (e: Throwable) {
+                e.printStackTrace()
                 i.putExtra(urlString, DownloadSealed.OnError(err = e))
                 sendBroadcast(i)
             } finally {

@@ -5,7 +5,7 @@ import androidx.test.espresso.IdlingRegistry
 import androidx.test.espresso.assertion.ViewAssertions
 import androidx.test.espresso.matcher.ViewMatchers
 import androidx.test.ext.junit.rules.ActivityScenarioRule
-import com.umn.no_browser.view.home.espresso.EspressoIdlingResource
+import com.umn.n0.view.home.espresso.EspressoIdlingResource
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
