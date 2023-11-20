@@ -55,7 +55,7 @@ class DownloadService : Service() {
                 if (connection.responseCode in 200..300) {
                     connections[urlString] = connection
                     val inputStream = connection.inputStream
-                    val buffersSize = (1024 * 1024) * 5
+                    val buffersSize = 10 * (1024 * 1024) // 5MB
                     val buffers = ByteArray(buffersSize)
                     val contentLength = connection.contentLength
                     var downloadProgress = 0

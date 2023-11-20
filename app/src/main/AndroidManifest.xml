@@ -64,6 +64,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.umn.n0.view.home.SelectFolderActivity"
+            android:theme="@style/Theme.Application.Splash" />
+
         <service android:name="com.umn.n0.view.services.DownloadService" />
 
         <provider

@@ -23,8 +23,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.net.toFile
 import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
 import com.umn.n0.BuildConfig
 import com.umn.n0.R
 import com.umn.n0.databinding.ActivityMainBinding
@@ -45,6 +45,9 @@ class MainActivity : AppCompatActivity() {
         )
 
         private const val NO_BROWSER_PACKAGE_NAME = "com.umn.n0.browser"
+
+        private const val PREF_NAME = "N0_"
+        private const val PREF_KEY_PATH_DOWNLOAD = "key_path_download"
     }
 
     private val downloadDir by lazy {
@@ -57,25 +60,36 @@ class MainActivity : AppCompatActivity() {
 
     private var _downloadUrl: String? = null
 
-    private val activityResultOpenDocumentTree =
-        registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            if (uri != null) {
-                val url = _downloadUrl ?: return@registerForActivityResult
-                val pickedDir = DocumentFile.fromTreeUri(this, uri)
-                val fileName =
-                    _downloadUrl?.toUri()?.lastPathSegment ?: return@registerForActivityResult
-                val findFile = pickedDir?.findFile(fileName)
-                val isExist = findFile?.exists() ?: false
-                if (isExist) findFile?.delete()
-                val createFile = pickedDir?.createFile("", fileName)
-                val result = createFile?.uri
-                if (result != null) {
-                    startDownload(url, result)
-                }
+    private val a = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val path = it.data?.getStringExtra(SelectFolderActivity.DATA_EXTRA)
+        if (path != null) {
+            val downloadUrl = _downloadUrl ?: return@registerForActivityResult
+            val fileName =
+                downloadUrl.toUri().lastPathSegment ?: return@registerForActivityResult
+            val uri = AppBuild.Provider.getUriForFile(
+                this, File(File(path), fileName)
+            )
+            getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(PREF_KEY_PATH_DOWNLOAD, path)
+                .commit()
+            startDownload(downloadUrl, uri)
+        }
+    }
+
+    private val activityResultLauncherMultiplePermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            var isGranted = false
+            for (permission in PERMISSIONS) {
+                isGranted = permissions[permission] ?: false
+            }
+            if (isGranted) {
+                val i = Intent(this, SelectFolderActivity::class.java)
+                a.launch(i)
             }
         }
 
-    private val activityResultLauncherMultiplePermissions =
+    private val activityResultLauncherMultiplePermissionss =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             var isGranted = false
             for (permission in PERMISSIONS) {
@@ -167,14 +181,17 @@ class MainActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
             if (url.contains(".bin")) {
+                val name = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
+                    .getString(PREF_KEY_PATH_DOWNLOAD, "${Environment.getExternalStorageDirectory().path}/$downloadDir")
                 _downloadUrl = url
-                AlertDialog.Builder(this).setTitle("Download")
-                    .setMessage("\nThe download results will be in the $downloadDir folder")
+                AlertDialog.Builder(this)
+                    .setTitle("Download location")
+                    .setMessage("\nDownloads $name")
                     .setPositiveButton("Ok") { dialog, _ ->
-                        activityResultLauncherMultiplePermissions.launch(PERMISSIONS)
+                        activityResultLauncherMultiplePermissionss.launch(PERMISSIONS)
                         dialog.dismiss()
                     }.setNegativeButton("Change") { dialog, _ ->
-                        activityResultOpenDocumentTree.launch(null)
+                        activityResultLauncherMultiplePermissions.launch(PERMISSIONS)
                         dialog.cancel()
                     }.show()
             } else {
