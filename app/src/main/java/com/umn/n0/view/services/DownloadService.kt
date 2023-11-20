@@ -54,25 +54,15 @@ class DownloadService : Service() {
                 }
                 if (connection.responseCode in 200..300) {
                     connections[urlString] = connection
-//                    val name: String = urlString.toUri().lastPathSegment
-//                        ?: throw IllegalArgumentException()
-//                    val contentDisposition = connection.getHeaderField("Content-Disposition")
-//                        if (contentDisposition != null && contentDisposition.indexOf("=") !== -1) {
-//                            contentDisposition.split("=")[1] //getting value after '='
-//                        } else {
-//                            urlString.toUri().lastPathSegment ?: "aa.apk"
-//                        }
-
                     val inputStream = connection.inputStream
-                    val buffersSize = 1024
+                    val buffersSize = (1024 * 1024) * 5
                     val buffers = ByteArray(buffersSize)
                     val contentLength = connection.contentLength
                     var downloadProgress = 0
                     val outputStream = contentResolver.openOutputStream(data)
                     i.putExtra(
                         urlString, DownloadSealed.OnDownload(
-                            progress = 0,
-                            contentLength = contentLength,
+                            progress = 0, contentLength = contentLength,
                         )
                     )
                     sendBroadcast(i)
@@ -82,7 +72,10 @@ class DownloadService : Service() {
                         }
                         if (readCount != -1) {
                             val bytes =
-                                if (readCount == buffersSize) buffers else buffers.copyOf(readCount)
+                                if (readCount == buffersSize)
+                                    buffers
+                                else
+                                    buffers.copyOf(readCount)
                             downloadProgress += bytes.size
                             i.putExtra(
                                 urlString, DownloadSealed.OnDownload(

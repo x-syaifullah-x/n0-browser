@@ -3,7 +3,6 @@ package com.umn.n0.view.home
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
@@ -26,6 +25,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
+import com.umn.n0.BuildConfig
 import com.umn.n0.R
 import com.umn.n0.databinding.ActivityMainBinding
 import com.umn.n0.databinding.DialogDownloadBinding
@@ -44,18 +44,26 @@ class MainActivity : AppCompatActivity() {
             android.Manifest.permission.WRITE_EXTERNAL_STORAGE
         )
 
-        private const val DOWNLOAD_DIR = "N0Browser"
+        private const val NO_BROWSER_PACKAGE_NAME = "com.umn.n0.browser"
     }
 
-    private var downloadUrl: String? = null
+    private val downloadDir by lazy {
+        when (packageName) {
+            BuildConfig.PACKAGE_NAME_N0_BROWSER -> "N0Browser"
+            BuildConfig.PACKAGE_NAME_N0_RENDER -> "PS0Render"
+            else -> throw IllegalArgumentException("please check package name in gradle")
+        }
+    }
+
+    private var _downloadUrl: String? = null
 
     private val activityResultOpenDocumentTree =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null) {
-                val url = downloadUrl ?: return@registerForActivityResult
+                val url = _downloadUrl ?: return@registerForActivityResult
                 val pickedDir = DocumentFile.fromTreeUri(this, uri)
                 val fileName =
-                    downloadUrl?.toUri()?.lastPathSegment ?: return@registerForActivityResult
+                    _downloadUrl?.toUri()?.lastPathSegment ?: return@registerForActivityResult
                 val findFile = pickedDir?.findFile(fileName)
                 val isExist = findFile?.exists() ?: false
                 if (isExist) findFile?.delete()
@@ -74,21 +82,21 @@ class MainActivity : AppCompatActivity() {
                 isGranted = permissions[permission] ?: false
             }
             if (isGranted) {
-                val a = File(Environment.getExternalStorageDirectory(), DOWNLOAD_DIR)
-                if (!a.exists()) {
-                    a.mkdir()
-                }
-                if (downloadUrl == null) return@registerForActivityResult
+                val fileDownloadDir = File(Environment.getExternalStorageDirectory(), downloadDir)
+                if (!fileDownloadDir.exists()) fileDownloadDir.mkdir()
+                val downloadUrl = _downloadUrl ?: return@registerForActivityResult
+                val fileName =
+                    downloadUrl.toUri().lastPathSegment ?: return@registerForActivityResult
                 val uri = AppBuild.Provider.getUriForFile(
-                    this, File(a, downloadUrl!!.toUri()?.lastPathSegment)
+                    this, File(fileDownloadDir, fileName)
                 )
-                startDownload(downloadUrl!!, uri)
+                startDownload(downloadUrl, uri)
             }
         }
 
     private val activityMainBinding by lazy { ActivityMainBinding.inflate(layoutInflater) }
 
-    private var timeOnBackPressed = 0L
+    private var onBackPressedTimeMillis = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,9 +167,9 @@ class MainActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
             if (url.contains(".bin")) {
-                downloadUrl = url
+                _downloadUrl = url
                 AlertDialog.Builder(this).setTitle("Download")
-                    .setMessage("\nThe download results will be in the $DOWNLOAD_DIR folder")
+                    .setMessage("\nThe download results will be in the $downloadDir folder")
                     .setPositiveButton("Ok") { dialog, _ ->
                         activityResultLauncherMultiplePermissions.launch(PERMISSIONS)
                         dialog.dismiss()
@@ -170,7 +178,7 @@ class MainActivity : AppCompatActivity() {
                         dialog.cancel()
                     }.show()
             } else {
-                val downloadDirectory = File(cacheDir, DOWNLOAD_DIR)
+                val downloadDirectory = File(cacheDir, downloadDir)
                 if (!downloadDirectory.exists()) {
                     downloadDirectory.mkdirs()
                 }
@@ -226,7 +234,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
             }
         }
-        val homePage = if (packageName == "com.umn.n0.browser") {
+        val homePage = if (packageName == NO_BROWSER_PACKAGE_NAME) {
             "https://n0render.com/dc"
         } else {
             "https://n0render.com/retro"
@@ -266,32 +274,23 @@ class MainActivity : AppCompatActivity() {
                         } ?: return
                     when (downloadSealed) {
                         is DownloadSealed.OnDownload -> {
+                            val progressHorizontal = dialogDownloadBinding.progressHorizontal
                             val progressOfPercent =
-                                downloadSealed.progress * 100 / downloadSealed.contentLength
-                            if (dialogDownloadBinding.progressHorizontal.isIndeterminate) {
-                                dialogDownloadBinding.progressHorizontal.isIndeterminate = false
-                            }
-                            dialogDownloadBinding.progressHorizontal.progress = progressOfPercent
-
+                                (downloadSealed.progress.toLong() * 100) / downloadSealed.contentLength.toLong()
+                            progressHorizontal.isIndeterminate = (progressOfPercent < 0)
+                            progressHorizontal.progress = progressOfPercent.toInt()
                             val progressOfMB = toMegaByteString(downloadSealed.progress.toLong())
                             val contentLengthOfMB =
                                 toMegaByteString(downloadSealed.contentLength.toLong())
                             val a = "$progressOfMB / $contentLengthOfMB"
                             dialogDownloadBinding.textProgress.text = a
-                            if (progressOfPercent == 100) {
+                            if (progressOfMB == contentLengthOfMB) {
                                 dialog.cancel()
                                 unregisterReceiver(this)
                                 val uri = i.data
                                 val isApk = uri?.lastPathSegment?.contains(".apk") ?: false
                                 if (isApk) {
-                                    val install = Intent(Intent.ACTION_VIEW)
-                                    install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                    install.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                                    install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-                                    install.setDataAndType(
-                                        uri, "application/vnd.android.package-archive"
-                                    );
-                                    context?.startActivity(install)
+                                    installApk(this@MainActivity, uri)
                                 }
                             }
                         }
@@ -308,6 +307,17 @@ class MainActivity : AppCompatActivity() {
             }, IntentFilter(url)
         )
         startService(i)
+    }
+
+    private fun installApk(context: Context, apkFile: Uri?) {
+        val install = Intent(Intent.ACTION_VIEW)
+        install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        install.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+        install.setDataAndType(
+            apkFile, "application/vnd.android.package-archive"
+        );
+        context.startActivity(install)
     }
 
     private fun moveCursor(keyCode: Int) {
@@ -418,7 +428,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         val currentTimeMillis = System.currentTimeMillis()
-        val delay = currentTimeMillis - timeOnBackPressed
+        val delay = currentTimeMillis - onBackPressedTimeMillis
         val isTwoClick = delay < 1000
         if (isTwoClick) {
             if (activityMainBinding.webView.canGoBack()) {
@@ -427,7 +437,7 @@ class MainActivity : AppCompatActivity() {
                 super.onBackPressed()
             }
         } else {
-            timeOnBackPressed = currentTimeMillis
+            onBackPressedTimeMillis = currentTimeMillis
             val cursor = activityMainBinding.cursor
             if (!cursor.isFocused) {
                 cursor.requestFocusFromTouch()
