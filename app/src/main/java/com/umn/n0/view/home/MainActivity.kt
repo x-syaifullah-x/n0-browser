@@ -182,7 +182,10 @@ class MainActivity : AppCompatActivity() {
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
             if (url.contains(".bin")) {
                 val name = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-                    .getString(PREF_KEY_PATH_DOWNLOAD, "${Environment.getExternalStorageDirectory().path}/$downloadDir")
+                    .getString(
+                        PREF_KEY_PATH_DOWNLOAD,
+                        "${Environment.getExternalStorageDirectory().path}/$downloadDir"
+                    )
                 _downloadUrl = url
                 AlertDialog.Builder(this)
                     .setTitle("Download location")
@@ -251,10 +254,11 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
             }
         }
+
         val homePage = if (packageName == NO_BROWSER_PACKAGE_NAME) {
             "https://n0render.com/dc"
         } else {
-            "https://n0render.com/retro"
+            intent.data?.toString() ?: "https://n0render.com/retro"
         }
         webView.loadUrl(homePage)
     }
