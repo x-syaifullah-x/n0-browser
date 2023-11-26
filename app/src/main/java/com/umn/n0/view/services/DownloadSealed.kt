@@ -1,13 +1,21 @@
 package com.umn.n0.view.services
 
 import java.io.Serializable
+import java.util.concurrent.atomic.AtomicLong
 
 sealed interface DownloadSealed : Serializable {
 
-    data class OnDownload(
-        val progress: Int,
-        val contentLength: Int,
-    ) : DownloadSealed
+    data class Loading(
+        private val progress: AtomicLong,
+        private val length: Long,
+    ) : DownloadSealed {
 
-    data class OnError(val err: Throwable) : DownloadSealed
+        fun getProgress() = progress.get()
+
+        fun getLength() = length
+    }
+
+    data class Error(
+        val err: Throwable
+    ) : DownloadSealed
 }

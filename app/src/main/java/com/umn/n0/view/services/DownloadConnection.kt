@@ -11,8 +11,8 @@ class DownloadConnection(
     lateinit var downloadService: DownloadService
 
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        if (service is DownloadService.LocalBinder) {
-            downloadService = service.getServices()
+        if (service is DownloadService.Binder) {
+            downloadService = service.getService()
             onServiceConnected(this)
         } else {
             throw IllegalArgumentException()

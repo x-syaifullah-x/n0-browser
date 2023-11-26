@@ -23,7 +23,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.net.toFile
 import androidx.core.net.toUri
 import com.umn.n0.BuildConfig
 import com.umn.n0.R
@@ -287,22 +286,23 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onReceive(context: Context?, intent: Intent?) {
-                    val downloadSealed =
+                    val download =
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             intent?.getSerializableExtra(url, DownloadSealed::class.java)
                         } else {
-                            @Suppress("DEPRECATION") intent?.getSerializableExtra(url) as? DownloadSealed
+                            @Suppress("DEPRECATION")
+                            intent?.getSerializableExtra(url) as? DownloadSealed
                         } ?: return
-                    when (downloadSealed) {
-                        is DownloadSealed.OnDownload -> {
+                    when (download) {
+                        is DownloadSealed.Loading -> {
                             val progressHorizontal = dialogDownloadBinding.progressHorizontal
-                            val progressOfPercent =
-                                (downloadSealed.progress.toLong() * 100) / downloadSealed.contentLength.toLong()
+                            val downloadProgress = download.getProgress()
+                            val downloadLength = download.getLength()
+                            val progressOfPercent = (downloadProgress * 100) / downloadLength
                             progressHorizontal.isIndeterminate = (progressOfPercent < 0)
                             progressHorizontal.progress = progressOfPercent.toInt()
-                            val progressOfMB = toMegaByteString(downloadSealed.progress.toLong())
-                            val contentLengthOfMB =
-                                toMegaByteString(downloadSealed.contentLength.toLong())
+                            val progressOfMB = toMegaByteString(downloadProgress)
+                            val contentLengthOfMB = toMegaByteString(downloadLength)
                             val a = "$progressOfMB / $contentLengthOfMB"
                             dialogDownloadBinding.textProgress.text = a
                             if (progressOfMB == contentLengthOfMB) {
@@ -316,9 +316,9 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
-                        is DownloadSealed.OnError -> {
+                        is DownloadSealed.Error -> {
                             Toast.makeText(
-                                context, downloadSealed.err.message, Toast.LENGTH_LONG
+                                context, download.err.message, Toast.LENGTH_LONG
                             ).show()
                             dialog.cancel()
                             unregisterReceiver(this)
@@ -337,9 +337,56 @@ class MainActivity : AppCompatActivity() {
         install.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
         install.setDataAndType(
             apkFile, "application/vnd.android.package-archive"
-        );
+        )
         context.startActivity(install)
+
+//        withContext(Dispatchers.IO) {
+//            resolver.openInputStream(apkUri)?.use { apkStream ->
+//                val length =
+//                    DocumentFile.fromSingleUri(getApplication(), apkUri)?.length() ?: -1
+//                val params =
+//                    PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+//                val installer = app.packageManager.packageInstaller
+//                val sessionId = installer.createSession(params)
+//                val session = installer.openSession(sessionId)
+//
+//                session.openWrite(NAME, 0, length).use { sessionStream ->
+//                    apkStream.copyTo(sessionStream)
+//                    session.fsync(sessionStream)
+//                }
+//
+//                val intent = Intent(getApplication(), InstallReceiver::class.java)
+//                val PI_INSTALL = 3439
+//                val pi = PendingIntent.getBroadcast(
+//                    getApplication(),
+//                    PI_INSTALL,
+//                    intent,
+//                    PendingIntent.FLAG_UPDATE_CURRENT
+//                )
+//
+//                session.commit(pi.intentSender)
+//                session.close()
+//            }
     }
+
+//    class InstallReceiver : BroadcastReceiver() {
+//        override fun onReceive(context: Context, intent: Intent) {
+//
+//            when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)) {
+//                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+//                    val activityIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+//                    context.startActivity(activityIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+//                }
+//                PackageInstaller.STATUS_SUCCESS ->
+//                    ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)
+//                        .startTone(ToneGenerator.TONE_PROP_ACK)
+//                else -> {
+//                    val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE)
+//                    Log.e("TAG", "received $status and $msg")
+//                }
+//            }
+//        }
+//    }
 
     private fun moveCursor(keyCode: Int) {
         val cursorSpeed = 30F

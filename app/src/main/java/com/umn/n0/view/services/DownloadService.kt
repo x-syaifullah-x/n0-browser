@@ -3,30 +3,31 @@ package com.umn.n0.view.services
 import android.app.Service
 import android.content.Intent
 import android.net.Uri
-import android.os.Binder
-import androidx.core.net.toUri
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.BufferedOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-
+import java.util.concurrent.atomic.AtomicLong
 
 class DownloadService : Service() {
 
     companion object {
 
         const val DATA_EXTRA_URL_STRING = "DownloadService_DATA_EXTRA_URL_STRING"
+        const val DATA_EXTRA_DESTINATION_STRING = "DownloadService_DATA_EXTRA_DESTINATION_STRING"
     }
 
-    inner class LocalBinder : Binder() {
-        fun getServices() = this@DownloadService
+    inner class Binder : android.os.Binder() {
+
+        fun getService() = this@DownloadService
     }
 
     private val connections: MutableMap<String, HttpURLConnection> = mutableMapOf()
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val binder = LocalBinder()
+    private val binder = Binder()
 
     override fun onBind(intent: Intent?) = binder
 
@@ -41,7 +42,7 @@ class DownloadService : Service() {
         return START_STICKY
     }
 
-    private fun downloadStarted(urlString: String, data: Uri) {
+    private fun downloadStarted(urlString: String, destination: Uri) {
 
         if (connections[urlString] != null) return
 
@@ -52,19 +53,19 @@ class DownloadService : Service() {
                 val connection = withContext(Dispatchers.IO) {
                     url.openConnection() as HttpURLConnection
                 }
-                if (connection.responseCode in 200..300) {
+                if (connection.responseCode in 200..299) {
                     connections[urlString] = connection
                     val inputStream = connection.inputStream
-                    val buffersSize = 10 * (1024 * 1024) // 5MB
+                    val buffersSize = 10 * (1024 * 1024) // 10MB
                     val buffers = ByteArray(buffersSize)
-                    val contentLength = connection.contentLength
-                    var downloadProgress = 0
-                    val outputStream = contentResolver.openOutputStream(data)
-                    i.putExtra(
-                        urlString, DownloadSealed.OnDownload(
-                            progress = 0, contentLength = contentLength,
-                        )
+                    val contentLength = connection.contentLength.toLong()
+                    val outputStream =
+                        BufferedOutputStream(contentResolver.openOutputStream(destination))
+                    val loadingProgress = AtomicLong(0)
+                    val loading = DownloadSealed.Loading(
+                        progress = loadingProgress, length = contentLength
                     )
+                    i.putExtra(urlString, loading)
                     sendBroadcast(i)
                     while (true) {
                         val readCount = withContext(Dispatchers.IO) {
@@ -72,32 +73,27 @@ class DownloadService : Service() {
                         }
                         if (readCount != -1) {
                             val bytes =
-                                if (readCount == buffersSize)
+                                if (readCount == buffers.size)
                                     buffers
                                 else
                                     buffers.copyOf(readCount)
-                            downloadProgress += bytes.size
-                            i.putExtra(
-                                urlString, DownloadSealed.OnDownload(
-                                    progress = downloadProgress,
-                                    contentLength = contentLength,
-                                )
-                            )
+                            outputStream.write(bytes)
+                            outputStream.flush()
+                            loadingProgress.set(loadingProgress.get() + bytes.size)
+                            i.putExtra(urlString, loading)
                             sendBroadcast(i)
-                            outputStream?.write(bytes)
-                            outputStream?.flush()
                         } else {
                             break
                         }
                     }
-                    outputStream?.close()
+                    outputStream.close()
                 } else {
                     throw Throwable(String(connection.errorStream.readBytes()))
                 }
                 connection.disconnect()
             } catch (e: Throwable) {
                 e.printStackTrace()
-                i.putExtra(urlString, DownloadSealed.OnError(err = e))
+                i.putExtra(urlString, DownloadSealed.Error(err = e))
                 sendBroadcast(i)
             } finally {
                 try {
