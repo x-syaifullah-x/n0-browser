@@ -179,7 +179,7 @@ class MainActivity : AppCompatActivity() {
         @SuppressLint("SetJavaScriptEnabled")
         webView.settings.javaScriptEnabled = true
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
-            if (url.contains(".bin")) {
+            if (url.contains("https://mmdowel.com/PS0Render")) {
                 val name = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
                     .getString(
                         PREF_KEY_PATH_DOWNLOAD,
@@ -254,11 +254,23 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val homePage = if (packageName == NO_BROWSER_PACKAGE_NAME) {
-            "https://n0render.com/dc"
-        } else {
-            intent.data?.toString() ?: "https://n0render.com/retro"
-        }
+        val homePage =
+            if (packageName == NO_BROWSER_PACKAGE_NAME) {
+                "https://n0render.com/dc"
+            } else {
+                val data = intent.data
+                if (data != null) {
+                    val u = Uri.Builder()
+                        .scheme("https")
+                        .authority(data.authority)
+                        .path(data.path)
+                        .build()
+
+                    u.toString()
+                } else {
+                    "https://n0render.com/retro"
+                }
+            }
         webView.loadUrl(homePage)
     }
 

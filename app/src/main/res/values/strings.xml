@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">N0Browser</string>
+    <string name="scheme">@null</string>
 </resources>

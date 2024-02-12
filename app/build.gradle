@@ -31,11 +31,13 @@ android {
         "browser" {
             applicationIdSuffix applicationIdSuffixBrowser
             resValue "string", "app_name", "N0Browser"
+            resValue "string", "scheme", "n0browser"
             versionNameSuffix applicationIdSuffixBrowser
         }
         "render" {
             applicationIdSuffix applicationIdSuffixRender
             resValue "string", "app_name", "N0Render"
+            resValue "string", "scheme", "n0render"
             versionNameSuffix applicationIdSuffixRender
         }
     }
@@ -60,6 +62,7 @@ android {
             buildConfigField "String", "PACKAGE_NAME_N0_RENDER", '"com.umn.n0.render"'
             minifyEnabled false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            signingConfig signingConfigs.release
         }
         release {
             buildConfigField "String", "PACKAGE_NAME_N0_BROWSER", '"com.umn.n0.browser"'
@@ -89,7 +92,7 @@ android {
         unitTests.includeAndroidResources = true
     }
 
-//    sourceSets {
+    sourceSets {
 //        androidTest {}
 //        debug {}
 //        main {
@@ -99,7 +102,7 @@ android {
 //            manifest.srcFile "AndroidManifest.xml"
 //            proto { srcDir "proto" }
 //        }
-//    }
+    }
 
 //    packagingOptions {
 //        exclude "META-INF/**"
