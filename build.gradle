@@ -51,6 +51,9 @@ buildscript {
                 if (details.requested.group == "androidx.core") {
                     details.useVersion "$vAndroidxCore"
                 }
+                if (details.requested.group == "androidx.cursoradapter") {
+                    details.useVersion "$vAndroidxCursorAdapter"
+                }
                 if (details.requested.group == "androidx.customview") {
                     if ("${details.requested}".contains("androidx.customview:customview:")) {
                         details.useVersion "$vAndroidxCustomview"
@@ -65,8 +68,17 @@ buildscript {
                 if (details.requested.group == "androidx.drawerlayout") {
                     details.useVersion "$vAndroidxDrawerLayout"
                 }
+                if (details.requested.group == "androidx.dynamicanimation") {
+                    details.useVersion "$vAndroidxDynamicanimation"
+                }
                 if (details.requested.group == "androidx.fragment") {
                     details.useVersion "$vAndroidxFragment"
+                }
+                if (details.requested.group == "androidx.interpolator") {
+                    details.useVersion "$vAndroidxInterpolator"
+                }
+                if (details.requested.group == "androidx.legacy") {
+                    details.useVersion "$vAndroidxLegacy"
                 }
                 if (details.requested.group == "androidx.lifecycle") {
                     details.useVersion "$vAndroidxLifecycle"
@@ -85,15 +97,33 @@ buildscript {
                         details.useVersion "$vAndroidxRecyclerview"
                     }
                 }
+                if (details.requested.group == "androidx.resourceinspection") {
+                    details.useVersion "$vAndroidxResourceinspection"
+                }
+                if (details.requested.group == "androidx.room") {
+                    details.useVersion "$vAndroidxRoom"
+                }
                 if (details.requested.group == "androidx.savedstate") {
                     details.useVersion "$vAndroidxSavedstate"
                 }
+                if (details.requested.group == "androidx.sqlite") {
+                    details.useVersion "$vAndroidxSqlite"
+                }
                 if (details.requested.group == "androidx.test") {
-                    if ("${details.requested}".contains("androidx.test:monitor:")) {
-                        details.useVersion "$vAndroidxTestMonitor"
+                    if ("${details.requested}".contains("androidx.test:annotation:")) {
+                        details.useVersion "$vAndroidxTestAnnotaion"
                     }
                     if ("${details.requested}".contains("androidx.test:core:")) {
                         details.useVersion "$vAndroidxTestCore"
+                    }
+                    if ("${details.requested}".contains("androidx.test:monitor:")) {
+                        details.useVersion "$vAndroidxTestMonitor"
+                    }
+                    if ("${details.requested}".contains("androidx.test:rules:")) {
+                        details.useVersion "$vAndroidxTestRules"
+                    }
+                    if ("${details.requested}".contains("androidx.test:runner:")) {
+                        details.useVersion "$vAndroidxTestRunner"
                     }
                 }
                 if (details.requested.group == "androidx.tracing") {
@@ -125,6 +155,29 @@ buildscript {
                 if (details.requested.group == "org.jetbrains.kotlinx") {
                     if ("${details.requested}".contains("kotlinx-coroutines-")) {
                         details.useVersion "$vKotlinCoroutines"
+                    }
+                }
+                if (details.requested.group == "com.google.android.gms") {
+                    if ("${details.requested}".contains("play-services-basement")) {
+                        details.useVersion "$vComGoogleAndroidGmsPlayServicesBasement"
+                    }
+                    if ("${details.requested}".contains("play-services-tasks")) {
+                        details.useVersion "$vComGoogleAndroidGmsPlayServicesTasks"
+                    }
+                }
+                if (details.requested.group == "com.google.code.findbugs") {
+                    if ("${details.requested}".contains("jsr305")) {
+                        details.useVersion "$vComGoogleCodeFindbugsJsr305"
+                    }
+                }
+                if (details.requested.group == "com.google.errorprone") {
+                    if ("${details.requested}".contains("error_prone_annotations")) {
+                        details.useVersion "$vComGoogleErrorProneAnnotations"
+                    }
+                }
+                if (details.requested.group == "org.jetbrains") {
+                    if ("${details.requested}".contains("annotations")) {
+                        details.useVersion "$vOrgJetbrainsAnnotations"
                     }
                 }
             }
