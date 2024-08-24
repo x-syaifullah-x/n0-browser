@@ -9,14 +9,19 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Message
 import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -24,6 +29,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
+import com.monstertechno.adblocker.AdBlockerWebView
+import com.monstertechno.adblocker.util.AdBlocker
 import com.umn.n0.BuildConfig
 import com.umn.n0.R
 import com.umn.n0.databinding.ActivityMainBinding
@@ -33,6 +40,7 @@ import com.umn.n0.view.services.DownloadSealed
 import com.umn.n0.view.services.DownloadService
 import java.io.File
 import java.util.Locale
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -126,6 +134,20 @@ class MainActivity : AppCompatActivity() {
                 v.background = null
             }
         }
+
+//        activityMainBinding.etAddressBar.setOnKeyListener { v, keyCode, event ->
+//            val isActionDone = event.getAction() == KeyEvent.ACTION_DOWN
+//            val isActionEnter = keyCode == KeyEvent.KEYCODE_ENTER
+//            if (isActionDone && isActionEnter) {
+//                val addressBar = activityMainBinding.etAddressBar
+//                activityMainBinding.webView.loadUrl(addressBar.text.toString())
+//                addressBar.text.delete(0, addressBar.text.length)
+//                return@setOnKeyListener true
+//            }
+//            return@setOnKeyListener false
+//        }
+
+
         val webView = activityMainBinding.webView
         cursor.setOnKeyListener { v, keyCode, _ ->
             when (keyCode) {
@@ -176,8 +198,18 @@ class MainActivity : AppCompatActivity() {
             return@setOnKeyListener false
         }
 
+        AdBlockerWebView.init(this).initializeWebView(webView)
+
         @SuppressLint("SetJavaScriptEnabled")
         webView.settings.javaScriptEnabled = true
+        webView.settings.allowContentAccess = true
+        webView.settings.allowFileAccess = true
+        webView.settings.domStorageEnabled = true
+        webView.settings.setSupportMultipleWindows(true)
+        webView.settings.javaScriptCanOpenWindowsAutomatically = true
+        webView.getSettings().userAgentString = "${System.getProperty("http.agent")}N0Render"
+        webView.settings.saveFormData = true;
+        webView.settings.setEnableSmoothTransition(true);
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
             if (url.contains("https://mmdowel.com/PS0Render")) {
                 val name = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -206,7 +238,91 @@ class MainActivity : AppCompatActivity() {
                 startDownload(url, des)
             }
         }
+
         webView.webChromeClient = object : WebChromeClient() {
+            var alertDialog: AlertDialog? = null
+            var wv: WebView? = null
+
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: Message?
+            ): Boolean {
+                try {
+                    wv = WebView(this@MainActivity)
+                    val settings = wv?.settings
+                    if (settings != null) {
+                        @SuppressLint("SetJavaScriptEnabled")
+                        settings.javaScriptEnabled = true
+                        settings.allowContentAccess = true
+                        settings.allowFileAccess = true
+                        settings.allowFileAccess = true
+                        settings.domStorageEnabled = true
+                        settings.setSupportMultipleWindows(true)
+                        settings.javaScriptCanOpenWindowsAutomatically = true
+                        settings.userAgentString = webView.getSettings().userAgentString
+                        settings.pluginState = WebSettings.PluginState.ON
+                        settings.setSupportZoom(true)
+                        settings.builtInZoomControls = true
+                        settings.savePassword = true
+                        settings.saveFormData = true
+                        wv?.webChromeClient = this
+                        wv?.webViewClient = object : WebViewClient() {
+
+                            @Deprecated("Deprecated in Java")
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                url: String?
+                            ): Boolean {
+                                val isBlock = AdBlocker.isAd(url)
+                                if (isBlock) {
+                                    return true
+                                }
+                                if (url != null && isDialog) {
+                                    view?.loadUrl(url)
+                                    return true
+                                }
+                                alertDialog?.dismiss()
+                                return false
+                            }
+                        }
+                        alertDialog = AlertDialog.Builder(this@MainActivity)
+                            .setView(wv)
+                            .setOnCancelListener {
+                                wv?.destroy()
+                            }.create()
+                        alertDialog?.show()
+                        alertDialog?.window?.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                        val cookieManager = CookieManager.getInstance()
+                        cookieManager.setAcceptCookie(true)
+                        cookieManager.setAcceptThirdPartyCookies(wv, true)
+                        cookieManager.setAcceptThirdPartyCookies(view, true)
+                        val transport = resultMsg?.obj as? WebView.WebViewTransport
+                        transport?.webView = wv
+                        resultMsg?.sendToTarget()
+                        return true
+                    }
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                }
+                return false
+            }
+
+            override fun onCloseWindow(window: WebView?) {
+                try {
+                    wv?.destroy()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                try {
+                    alertDialog?.dismiss()
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
 
@@ -224,10 +340,26 @@ class MainActivity : AppCompatActivity() {
         }
         webView.webViewClient = object : WebViewClient() {
 
+            override fun shouldInterceptRequest(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): WebResourceResponse? {
+                val isBlock = AdBlockerWebView.blockAds(view, "${request?.url}")
+                if (isBlock) {
+                    return AdBlocker.createEmptyResource()
+                }
+                return super.shouldInterceptRequest(view, request)
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView?, request: WebResourceRequest?
             ): Boolean {
                 val url = request?.url ?: return true
+
+                if (AdBlocker.isAd(url.toString())) {
+                    return true
+                }
+
                 if (url.scheme?.contains("http") == false) {
                     if (url.toString().contains("play.google.com")) {
                         val packageName = url.getQueryParameter("id")
@@ -250,22 +382,37 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
+                val cm = CookieManager.getInstance()
+                cm.setAcceptCookie(true)
+                cm.acceptCookie()
+                cm.setAcceptThirdPartyCookies(webView, true)
+                cm.flush()
                 super.onPageFinished(view, url)
             }
         }
 
+        val intentData = intent.data
+
         val homePage =
             if (packageName == NO_BROWSER_PACKAGE_NAME) {
-                "https://n0render.com/dc"
-            } else {
-                val data = intent.data
-                if (data != null) {
+                if (intentData != null) {
                     val u = Uri.Builder()
                         .scheme("https")
-                        .authority(data.authority)
-                        .path(data.path)
+                        .authority(intentData.authority)
+                        .path(intentData.path)
                         .build()
+                    u.toString()
+                } else {
+                    "https://n0render.com/dc"
+                }
 
+            } else {
+                if (intentData != null) {
+                    val u = Uri.Builder()
+                        .scheme("https")
+                        .authority(intentData.authority)
+                        .path(intentData.path)
+                        .build()
                     u.toString()
                 } else {
                     "https://n0render.com/retro"

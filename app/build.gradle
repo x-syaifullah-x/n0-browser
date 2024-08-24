@@ -124,6 +124,8 @@ dependencies {
 
     implementation "com.google.android.material:material:$vMaterial"
 
+    implementation "com.github.MonsterTechnoGits:WebViewAdblock:1.1"
+
     testImplementation "junit:junit:$vJunit"
     testImplementation "org.json:json:$vOrgGson"
     testImplementation "org.mockito:mockito-core:$vMockito"

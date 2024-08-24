@@ -25,6 +25,15 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:progress="50" />
 
+    <!--    <EditText-->
+    <!--        android:id="@+id/et_address_bar"-->
+    <!--        android:layout_width="match_parent"-->
+    <!--        android:layout_height="wrap_content"-->
+    <!--        android:hint="https://google.com"-->
+    <!--        android:layout_margin="10dp"-->
+    <!--        android:maxLines="1"-->
+    <!--        app:layout_constraintTop_toTopOf="parent" />-->
+
     <WebView
         android:id="@+id/web_view"
         android:layout_width="match_parent"

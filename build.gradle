@@ -187,16 +187,15 @@ buildscript {
 
 allprojects {
     addRepos(repositories)
-
-    String userName = System.getProperty("user.name")
-    if (userName == "xxx") {
-        String userHomeDir = System.getProperty("user.home")
-        String userCacheDir = "${userHomeDir}/.cache"
-        boolean projectInCacheDir = projectDir.path.contains(userCacheDir)
-        if (!projectInCacheDir) {
-            buildDir = "${userCacheDir}/android/studio/project/${rootProject.name}/${project.name}/build"
-        }
-    }
+//    String userName = System.getProperty("user.name")
+//    if (userName == "xxx") {
+//        String userHomeDir = System.getProperty("user.home")
+//        String userCacheDir = "${userHomeDir}/.cache"
+//        boolean projectInCacheDir = projectDir.path.contains(userCacheDir)
+//        if (!projectInCacheDir) {
+//            buildDir = "${userCacheDir}/android/studio/project/${rootProject.name}/${project.name}/build"
+//        }
+//    }
 }
 
 tasks.register("clean", Delete) {
