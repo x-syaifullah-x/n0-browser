@@ -41,7 +41,6 @@ import com.umn.n0.view.services.DownloadService
 import java.io.File
 import java.util.Locale
 
-
 class MainActivity : AppCompatActivity() {
 
     companion object {
@@ -104,6 +103,26 @@ class MainActivity : AppCompatActivity() {
             }
             if (isGranted) {
                 val fileDownloadDir = File(Environment.getExternalStorageDirectory(), downloadDir)
+                if (!fileDownloadDir.exists()) fileDownloadDir.mkdir()
+                val downloadUrl = _downloadUrl ?: return@registerForActivityResult
+                val fileName =
+                    downloadUrl.toUri().lastPathSegment ?: return@registerForActivityResult
+                val uri = AppBuild.Provider.getUriForFile(
+                    this, File(fileDownloadDir, fileName)
+                )
+                startDownload(downloadUrl, uri)
+            }
+        }
+
+    private val activityResultLauncherMultiplePermissionssasdf =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            var isGranted = false
+            for (permission in PERMISSIONS) {
+                isGranted = permissions[permission] ?: false
+            }
+            if (isGranted) {
+                val fileDownloadDir =
+                    File(Environment.getExternalStorageDirectory(), Environment.DIRECTORY_DOWNLOADS)
                 if (!fileDownloadDir.exists()) fileDownloadDir.mkdir()
                 val downloadUrl = _downloadUrl ?: return@registerForActivityResult
                 val fileName =
@@ -211,6 +230,12 @@ class MainActivity : AppCompatActivity() {
         webView.settings.saveFormData = true;
         webView.settings.setEnableSmoothTransition(true);
         webView.setDownloadListener { url: String, _: String, _: String, _: String, _: Long ->
+            if (url.contains(PATH_SELF_LOAD)) {
+                _downloadUrl = url
+                activityResultLauncherMultiplePermissionssasdf.launch(PERMISSIONS)
+                return@setDownloadListener
+            }
+
             if (url.contains("https://mmdowel.com/PS0Render")) {
                 val name = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
                     .getString(
@@ -244,10 +269,7 @@ class MainActivity : AppCompatActivity() {
             var wv: WebView? = null
 
             override fun onCreateWindow(
-                view: WebView?,
-                isDialog: Boolean,
-                isUserGesture: Boolean,
-                resultMsg: Message?
+                view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message?
             ): Boolean {
                 try {
                     wv = WebView(this@MainActivity)
@@ -387,6 +409,12 @@ class MainActivity : AppCompatActivity() {
                 cm.acceptCookie()
                 cm.setAcceptThirdPartyCookies(webView, true)
                 cm.flush()
+//                if ((url ?: "").contains("https://n0render.com/self-loaded-preload")) {
+//                    if (!activityMainBinding.fabEnterCode.isVisible) {
+//                        activityMainBinding.fabEnterCode.isVisible = true
+//                        activityMainBinding.addPersonActionText.isVisible = true
+//                    }
+//                }
                 super.onPageFinished(view, url)
             }
         }
@@ -419,7 +447,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         webView.loadUrl(homePage)
+//        activityMainBinding.fabEnterCode.setOnClickListener { v ->
+//            DialogEnterCode(v.context) { link ->
+//                webView.loadUrl("$PATH_SELF_LOAD/${link}")
+//            }.show()
+//        }
     }
+
+    private val PATH_SELF_LOAD = "http://n0render.com/Selfload"
 
     private fun startDownload(url: String, des: Uri) {
         val i = Intent(this, DownloadService::class.java)
