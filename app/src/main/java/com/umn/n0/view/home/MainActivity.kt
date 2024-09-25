@@ -428,12 +428,15 @@ class MainActivity : AppCompatActivity() {
                         .scheme("https")
                         .authority(intentData.authority)
                         .path(intentData.path)
-                        .build()
+                    val query = intentData.query
+                    if (!query.isNullOrBlank()) {
+                        u.encodedQuery(query)
+                    }
+                    u.build()
                     u.toString()
                 } else {
                     "https://n0render.com/dc"
                 }
-
             } else {
                 if (intentData != null) {
                     val u = Uri.Builder()
@@ -447,6 +450,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         webView.loadUrl(homePage)
+
 //        activityMainBinding.fabEnterCode.setOnClickListener { v ->
 //            DialogEnterCode(v.context) { link ->
 //                webView.loadUrl("$PATH_SELF_LOAD/${link}")
