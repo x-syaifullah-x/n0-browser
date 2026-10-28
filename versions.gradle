@@ -1,10 +1,10 @@
 def build_versions = [:]
 build_versions.application_id = "id.xxx.example"
 build_versions.min_sdk = 21 // android lollipop ( 5.0 )
-build_versions.target_sdk = 35 // android latest
+build_versions.target_sdk = 36 // android latest
 build_versions.compile_sdk = build_versions.target_sdk
-build_versions.build_tools = "35.0.0"
-def version = 1
+build_versions.build_tools = "36.0.0"
+def version = 2
 def major = 0
 def minor = 0
 build_versions.code = (version + major + minor)
@@ -12,8 +12,8 @@ build_versions.name = "$version.$major.$minor"
 ext.build_versions = build_versions
 
 ext {
-    vGradle = "8.6.0"
-    vKotlin = "1.9.20"
+    vGradle = "8.10.0"
+    vKotlin = "2.0.21"
 
     // https://developer.android.com/jetpack/androidx/releases/activity
     vAndroidxActivity = "1.9.0"
